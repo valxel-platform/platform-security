@@ -13,7 +13,12 @@ roles: [member, admin]
 token_lifetime_seconds: 300             # access tokens: short; the BFF refreshes them
 bff:
   client_id: example-bff
-mobile: []                              # public clients: [{client_id, redirect_uris}]
+# Mobile apps (template-mobile): public clients, one redirect URI per build's scheme. The BFF
+# accepts their tokens on /mobile/api/** (BFF_MOBILE_AUDIENCE: the audience above).
+mobile:
+  - client_id: example-mobile
+    redirect_uris: [com.vrixel.example://callback, com.vrixel.example.dev://callback, com.vrixel.example.development://callback]
+offline_sessions: { idle_days: 7, max_days: 30 }   # how long a phone stays signed in without signal
 services:
   - name: example-service               # each service: an audience-only client
     calls: []                           # same product: forward the token (mesh proves the caller)

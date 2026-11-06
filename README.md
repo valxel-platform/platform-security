@@ -5,7 +5,7 @@ spec per product (`products/<product>.yaml`):
 
 | Layer | What | Where |
 | --- | --- | --- |
-| Identity | Keycloak (operator, HA, managed Postgres), **one realm per product**: the BFF and mobile clients (PKCE), audiences for services and MCP servers, token exchange for services crossing trust boundaries and for agents, permissions as roles through groups, organizations as tenants | `keycloak/`, `python -m platform_security realm` |
+| Identity | Keycloak (operator, HA, managed Postgres), **one realm per product**: the BFF and mobile clients (PKCE; mobile apps public, with bounded offline sessions), audiences for services and MCP servers, token exchange for services crossing trust boundaries and for agents, permissions as roles through groups, organizations as tenants | `keycloak/`, `python -m platform_security realm` |
 | Service identity | **Istio ambient**: mutual TLS for every workload from its service account, alongside OpenChoreo's Cilium | `mesh/install/` |
 | Who may call whom | Per product namespace: mTLS STRICT, deny by default, allow only the declared calls (mirrors `workload.yaml` dependencies), ingress only to the BFF, monitoring only to the management port | `python -m platform_security mesh` |
 
