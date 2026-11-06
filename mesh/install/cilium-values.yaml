@@ -1,0 +1,5 @@
+# Merged into OpenChoreo's Cilium values so Istio ambient can run alongside.
+cni:
+  exclusive: false
+socketLB:
+  hostNamespaceOnly: true

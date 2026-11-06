@@ -1,0 +1,32 @@
+# One file per product: its Keycloak realm and its mesh rules are generated from it.
+# (`python -m platform_security realm products/example.yaml`, `... mesh products/example.yaml`)
+product: example
+domain: example.vrixel.com              # the web app's origin: https://<domain>
+namespace: example                      # the product's namespace in the data plane
+# The product's API audience: every service checks tokens carry it (APP_AUDIENCE).
+audience: example-api
+# Permissions the services declare (@PreAuthorize SCOPE_...), and who gets them by role.
+scopes:
+  greetings:read: [member, admin]
+  greetings:write: [admin]
+roles: [member, admin]
+token_lifetime_seconds: 300             # access tokens: short; the BFF refreshes them
+bff:
+  client_id: example-bff
+mobile: []                              # public clients: [{client_id, redirect_uris}]
+services:
+  - name: example-service               # each service: an audience-only client
+    calls: []                           # same product: forward the token (mesh proves the caller)
+    exchanges: []                       # other trust domains: [{audience, scope}]
+agents:
+  - name: example-agent
+    mcp_servers:
+      - { audience: example-care-mcp, scope: "tasks:read tasks:write" }
+mcp_servers:
+  - name: example-care-mcp
+# Who may call whom inside the namespace (mirrors workload.yaml dependencies). Everything else is
+# denied by the mesh.
+calls:
+  - { from: example-bff, to: example-service, port: 8080 }
+  - { from: example-bff, to: example-web, port: 8080 }
+  - { from: example-agent, to: example-care-mcp, port: 8080 }
