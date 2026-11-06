@@ -12,6 +12,8 @@ keycloak-config-cli applies continuously).
   (audiences), services and agents that exchange tokens (confidential, standard token exchange,
   private_key_jwt), agents (also client credentials, for tool metadata only).
 - **Sessions**: short access tokens, rotating refresh tokens, brute-force protection, events on.
+  Mobile apps get offline sessions (`offline_access`) bounded by `offline_sessions` (idle and
+  maximum days), so a phone without signal for a shift doesn't lose its sign-in.
 """
 
 from __future__ import annotations
@@ -139,12 +141,22 @@ def render(spec: dict[str, Any]) -> dict[str, Any]:
         )
     ]
     for m in spec.get("mobile") or []:
+        # A phone can't keep a secret: a public client, PKCE required, exact redirect URIs (the
+        # app's own scheme for each build). offline_access lets the app keep working without
+        # signal past the browser session's idle timeout; the realm's offline session limits apply.
+        uris = list(m["redirect_uris"])
         clients.append(
             {
                 **confidential(m["client_id"], standardFlowEnabled=True, publicClient=True),
-                "redirectUris": list(m["redirect_uris"]),
-                "attributes": {"pkce.code.challenge.method": "S256", "use.refresh.tokens": "true"},
+                "consentRequired": False,
+                "redirectUris": uris,
+                "attributes": {
+                    "pkce.code.challenge.method": "S256",
+                    "use.refresh.tokens": "true",
+                    "post.logout.redirect.uris": "##".join(uris),
+                },
                 "defaultClientScopes": user_scopes,
+                "optionalClientScopes": ["offline_access"],
             }
         )
     for s in services:
@@ -173,8 +185,14 @@ def render(spec: dict[str, Any]) -> dict[str, Any]:
         }
         for role in spec.get("roles") or []
     ]
+    # Mobile apps work offline: their (offline) sessions last longer than a browser's, within limits.
+    offline = spec.get("offline_sessions") or {}
+    idle_days, max_days = int(offline.get("idle_days", 7)), int(offline.get("max_days", 30))
     return {
         "realm": product,
+        "offlineSessionIdleTimeout": idle_days * 86400,
+        "offlineSessionMaxLifespanEnabled": True,
+        "offlineSessionMaxLifespan": max_days * 86400,
         "enabled": True,
         "sslRequired": "external",
         "defaultSignatureAlgorithm": "RS256",

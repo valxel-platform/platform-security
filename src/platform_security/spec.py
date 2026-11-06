@@ -49,14 +49,25 @@ def check(spec: dict[str, Any]) -> list[str]:
         + [s["name"] for s in spec.get("services") or []]
         + [a["name"] for a in spec.get("agents") or []]
         + [m["name"] for m in spec.get("mcp_servers") or []]
+        + [m.get("client_id") for m in spec.get("mobile") or []]
     )
     dupes = sorted({n for n in names if names.count(n) > 1})
     if dupes:
         out.append(f"names used twice: {dupes}")
     for m in spec.get("mobile") or []:
+        if not m.get("client_id"):
+            out.append("each mobile app needs a client_id")
+        if not m.get("redirect_uris"):
+            out.append(f"{m.get('client_id')}: redirect_uris are required (the app's scheme for each build)")
         for uri in m.get("redirect_uris") or []:
             if "*" in uri:
                 out.append(f"{m.get('client_id')}: redirect URIs must be exact, not {uri}")
+            elif uri.startswith("http://"):
+                out.append(f"{m.get('client_id')}: {uri} is plain http; use the app's scheme or https")
+    offline = spec.get("offline_sessions") or {}
+    idle, longest = int(offline.get("idle_days", 7)), int(offline.get("max_days", 30))
+    if not 1 <= idle <= longest <= 90:
+        out.append("offline_sessions: 1 <= idle_days <= max_days <= 90")
     for c in spec.get("calls") or []:
         if not (c.get("from") and c.get("to") and c.get("port")):
             out.append(f"call {c} needs from, to and port")

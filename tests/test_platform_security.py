@@ -87,10 +87,20 @@ def test_sessions_are_short_and_refresh_tokens_rotate(s: dict) -> None:
 def test_mobile_apps_are_public_clients_with_pkce(s: dict) -> None:
     s2 = copy.deepcopy(s)
     s2["mobile"] = [{"client_id": "example-mobile", "redirect_uris": ["com.vrixel.example:/callback"]}]
-    m = by_id(realm.render(s2))["example-mobile"]
+    r = realm.render(s2)
+    m = by_id(r)["example-mobile"]
     assert m["publicClient"] is True and m["attributes"]["pkce.code.challenge.method"] == "S256"
+    assert m["attributes"]["post.logout.redirect.uris"] == "com.vrixel.example:/callback"
+    assert m["optionalClientScopes"] == ["offline_access"] and "example-api" in m["defaultClientScopes"]
+    assert r["offlineSessionIdleTimeout"] == 7 * 86400 and r["offlineSessionMaxLifespan"] == 30 * 86400
     s2["mobile"][0]["redirect_uris"] = ["https://*.example.com/*"]
     assert any("exact" in p for p in spec.check(s2))
+    s2["mobile"][0]["redirect_uris"] = ["http://localhost/callback"]
+    assert any("plain http" in p for p in spec.check(s2))
+    s2["mobile"][0]["redirect_uris"] = []
+    assert any("redirect_uris are required" in p for p in spec.check(s2))
+    s2["offline_sessions"] = {"idle_days": 40, "max_days": 30}
+    assert any("offline_sessions" in p for p in spec.check(s2))
 
 
 def test_the_mesh_denies_by_default_and_allows_declared_calls(s: dict) -> None:
