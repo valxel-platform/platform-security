@@ -1,0 +1,43 @@
+# Keycloak, run by the Keycloak operator (https://www.keycloak.org/operator/installation), on the
+# platform's cluster. One Keycloak for every product: one realm per product (realms/).
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: vrixel-id
+  namespace: keycloak
+spec:
+  instances: 3                      # highly available: services' token exchange depends on it
+  image: quay.io/keycloak/keycloak:26.4   # pin; standard token exchange is supported from 26.2
+  db:
+    vendor: postgres                # a managed Postgres (RDS), Multi-AZ, encrypted with KMS
+    host: vrixel-id.cluster-xxxx.us-east-1.rds.amazonaws.com
+    database: keycloak
+    usernameSecret: { name: keycloak-db, key: username }
+    passwordSecret: { name: keycloak-db, key: password }
+  hostname:
+    hostname: https://id.vrixel.com
+    strict: true
+    backchannelDynamic: false
+  http:
+    tlsSecret: keycloak-tls         # TLS inside the cluster too; the mesh adds mTLS on top
+  proxy:
+    headers: xforwarded             # behind the platform's gateway
+  features:
+    enabled:
+      - token-exchange-standard     # on by default since 26.2; listed so it stays on
+      - organization
+  additionalOptions:
+    - name: metrics-enabled
+      value: "true"
+    - name: health-enabled
+      value: "true"
+    - name: spi-events-listener-jboss-logging-success-level
+      value: info                   # sign-ins and token exchanges in the logs, for audit
+  resources:
+    requests: { cpu: "1", memory: 1500Mi }
+    limits: { memory: 2Gi }
+  unsupported:
+    podTemplate:
+      metadata:
+        labels:
+          istio.io/dataplane-mode: ambient

@@ -1,0 +1,9 @@
+profile: ambient
+meshConfig:
+  # Every workload's identity is its service account in the cluster's trust domain.
+  trustDomain: cluster.local
+  accessLogFile: /dev/stdout
+  accessLogEncoding: JSON
+pilot:
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
