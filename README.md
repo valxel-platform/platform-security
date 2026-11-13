@@ -1,6 +1,6 @@
 # Platform security
 
-Identity and the service mesh for every Vrixel product (constitution VX-17), generated from one
+Identity and the service mesh for every Valxel product (constitution VX-17), generated from one
 spec per product (`products/<product>.yaml`):
 
 | Layer | What | Where |
@@ -32,5 +32,5 @@ python -m platform_security realm products/<product>.yaml -o build/<product>-rea
 python -m platform_security mesh  products/<product>.yaml -o build/<product>-mesh.yaml    # kubectl apply / GitOps
 ```
 
-The Vrixel SDLC adds clients and calls to a product's spec when a design (G4) adds a component or
+The Valxel SDLC adds clients and calls to a product's spec when a design (G4) adds a component or
 a dependency; this repo's pull requests are reviewed by the platform's security owners.

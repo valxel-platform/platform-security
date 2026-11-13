@@ -1,7 +1,7 @@
 # One file per product: its Keycloak realm and its mesh rules are generated from it.
 # (`python -m platform_security realm products/example.yaml`, `... mesh products/example.yaml`)
 product: example
-domain: example.vrixel.com              # the web app's origin: https://<domain>
+domain: example.valxel.com              # the web app's origin: https://<domain>
 namespace: example                      # the product's namespace in the data plane
 # The product's API audience: every service checks tokens carry it (APP_AUDIENCE).
 audience: example-api
@@ -17,7 +17,7 @@ bff:
 # accepts their tokens on /mobile/api/** (BFF_MOBILE_AUDIENCE: the audience above).
 mobile:
   - client_id: example-mobile
-    redirect_uris: [com.vrixel.example://callback, com.vrixel.example.dev://callback, com.vrixel.example.development://callback]
+    redirect_uris: [com.valxel.example://callback, com.valxel.example.dev://callback, com.valxel.example.development://callback]
 offline_sessions: { idle_days: 7, max_days: 30 }   # how long a phone stays signed in without signal
 services:
   - name: example-service               # each service: an audience-only client

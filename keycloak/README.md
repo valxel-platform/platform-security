@@ -12,7 +12,7 @@
    # in CI/CD, with the clients' public certificates as environment variables:
    #   EMR_INTAKE_AGENT_CERTIFICATE=...  (one per client that exchanges tokens)
    keycloak-config-cli --import.files.locations=build/emr-realm.json \
-     --import.var-substitution.enabled=true --keycloak.url=https://id.vrixel.com ...
+     --import.var-substitution.enabled=true --keycloak.url=https://id.valxel.com ...
    ```
 
 ## Signing keys
