@@ -27,7 +27,7 @@ def test_the_bff_signs_in_with_pkce_and_exact_redirects(s: dict) -> None:
     assert bff["publicClient"] is False and bff["standardFlowEnabled"] is True
     assert bff["directAccessGrantsEnabled"] is False and bff["implicitFlowEnabled"] is False
     assert bff["attributes"]["pkce.code.challenge.method"] == "S256"
-    assert bff["redirectUris"] == ["https://example.vrixel.com/login/oauth2/code/keycloak"]
+    assert bff["redirectUris"] == ["https://example.valxel.com/login/oauth2/code/keycloak"]
     assert {"example-api", "organization", "greetings:read", "greetings:write"} <= set(bff["defaultClientScopes"])
     assert bff["fullScopeAllowed"] is False
 
@@ -86,11 +86,11 @@ def test_sessions_are_short_and_refresh_tokens_rotate(s: dict) -> None:
 
 def test_mobile_apps_are_public_clients_with_pkce(s: dict) -> None:
     s2 = copy.deepcopy(s)
-    s2["mobile"] = [{"client_id": "example-mobile", "redirect_uris": ["com.vrixel.example:/callback"]}]
+    s2["mobile"] = [{"client_id": "example-mobile", "redirect_uris": ["com.valxel.example:/callback"]}]
     r = realm.render(s2)
     m = by_id(r)["example-mobile"]
     assert m["publicClient"] is True and m["attributes"]["pkce.code.challenge.method"] == "S256"
-    assert m["attributes"]["post.logout.redirect.uris"] == "com.vrixel.example:/callback"
+    assert m["attributes"]["post.logout.redirect.uris"] == "com.valxel.example:/callback"
     assert m["optionalClientScopes"] == ["offline_access"] and "example-api" in m["defaultClientScopes"]
     assert r["offlineSessionIdleTimeout"] == 7 * 86400 and r["offlineSessionMaxLifespan"] == 30 * 86400
     s2["mobile"][0]["redirect_uris"] = ["https://*.example.com/*"]

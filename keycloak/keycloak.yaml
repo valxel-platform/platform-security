@@ -3,19 +3,19 @@
 apiVersion: k8s.keycloak.org/v2alpha1
 kind: Keycloak
 metadata:
-  name: vrixel-id
+  name: valxel-id
   namespace: keycloak
 spec:
   instances: 3                      # highly available: services' token exchange depends on it
   image: quay.io/keycloak/keycloak:26.4   # pin; standard token exchange is supported from 26.2
   db:
     vendor: postgres                # a managed Postgres (RDS), Multi-AZ, encrypted with KMS
-    host: vrixel-id.cluster-xxxx.us-east-1.rds.amazonaws.com
+    host: valxel-id.cluster-xxxx.us-east-1.rds.amazonaws.com
     database: keycloak
     usernameSecret: { name: keycloak-db, key: username }
     passwordSecret: { name: keycloak-db, key: password }
   hostname:
-    hostname: https://id.vrixel.com
+    hostname: https://id.valxel.com
     strict: true
     backchannelDynamic: false
   http:

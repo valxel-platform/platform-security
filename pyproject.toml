@@ -1,7 +1,7 @@
 [project]
 name = "platform-security"
 version = "0.1.0"
-description = "Keycloak realms and Istio ambient mesh policies for Vrixel products"
+description = "Keycloak realms and Istio ambient mesh policies for Valxel products"
 requires-python = ">=3.12"
 dependencies = ["pyyaml>=6.0.3,<7"]
 
