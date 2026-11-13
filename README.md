@@ -34,3 +34,7 @@ python -m platform_security mesh  products/<product>.yaml -o build/<product>-mes
 
 The Valxel SDLC adds clients and calls to a product's spec when a design (G4) adds a component or
 a dependency; this repo's pull requests are reviewed by the platform's security owners.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
