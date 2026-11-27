@@ -118,11 +118,7 @@ def test_the_mesh_denies_by_default_and_allows_declared_calls(s: dict) -> None:
     monitoring = next(d for d in docs if d["metadata"]["name"] == "monitoring-to-management")
     assert monitoring["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["observability"]
     assert monitoring["spec"]["rules"][0]["to"][0]["operation"]["ports"] == ["8081"]
-    agent = next(d for d in docs if d["metadata"]["name"] == "monitoring-to-example-agent")
-    assert agent["spec"]["selector"]["matchLabels"] == {"app.kubernetes.io/name": "example-agent"}
-    assert agent["spec"]["rules"] == [
-        {"from": [{"source": {"namespaces": ["observability"]}}], "to": [{"operation": {"ports": ["8080"]}}]}
-    ]
+    assert not any(d["metadata"]["name"].startswith("monitoring-to-example") for d in docs)  # 8081 only
     ingress = next(d for d in docs if d["metadata"]["name"] == "ingress-to-example-bff")
     assert ingress["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["openchoreo-data-plane"]
     assert yaml.safe_load_all(mesh.dump(docs))
@@ -136,7 +132,6 @@ def test_specs_are_checked(s: dict) -> None:
         "token_lifetime_seconds": 3600,
         "scopes": {"Greetings": ["ghost"]},
         "calls": [{"from": "a"}],
-        "metrics": [{"workload": "a"}, {"workload": "b", "port": 8081}],
         "bff": {},
     }
     problems = spec.check(bad)
@@ -145,8 +140,6 @@ def test_specs_are_checked(s: dict) -> None:
     assert any("greetings:read" in p for p in problems)
     assert any("unknown roles" in p for p in problems)
     assert any("from, to and port" in p for p in problems)
-    assert any("needs workload and port" in p for p in problems)
-    assert any("8081 is reached already" in p for p in problems)
     assert any("bff.client_id" in p for p in problems)
     dup = copy.deepcopy(s)
     dup["mcp_servers"].append({"name": "example-service"})

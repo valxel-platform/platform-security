@@ -71,9 +71,4 @@ def check(spec: dict[str, Any]) -> list[str]:
     for c in spec.get("calls") or []:
         if not (c.get("from") and c.get("to") and c.get("port")):
             out.append(f"call {c} needs from, to and port")
-    for m in spec.get("metrics") or []:
-        if not (m.get("workload") and m.get("port")):
-            out.append(f"metrics {m} needs workload and port")
-        elif m.get("port") == 8081:
-            out.append(f"metrics {m}: 8081 is reached already (the management port); list only API ports")
     return out

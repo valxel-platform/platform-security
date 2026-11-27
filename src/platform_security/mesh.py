@@ -48,7 +48,8 @@ def render(spec: dict[str, Any]) -> list[dict[str, Any]]:
         },
         # The internet reaches only the BFF, through the platform's gateway.
         allow(ns, f"ingress-to-{bff}", label, bff, [8080], namespaces=[ingress_ns]),
-        # The platform's probes and Prometheus reach only the management port.
+        # The data plane's metrics collector reaches only the management port, where every template
+        # serves its metrics (8081).
         {
             "apiVersion": "security.istio.io/v1",
             "kind": "AuthorizationPolicy",
@@ -61,12 +62,6 @@ def render(spec: dict[str, Any]) -> list[dict[str, Any]]:
             },
         },
     ]
-    # A workload whose metrics are on its API port (the Python templates serve /metrics on 8080) is
-    # declared under `metrics`; the collector then reaches that port on that workload only.
-    for m in spec.get("metrics") or []:
-        docs.append(
-            allow(ns, f"monitoring-to-{m['workload']}", label, m["workload"], [m["port"]], namespaces=[monitoring_ns])
-        )
     for c in spec.get("calls") or []:
         docs.append(
             allow(ns, f"{c['from']}-to-{c['to']}", label, c["to"], [c["port"]], principals=[principal(c["from"])])
