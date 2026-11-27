@@ -42,6 +42,10 @@ plane applies that branch (platform-foundation: `product-mesh`). Nobody runs `ku
 holds no cluster credentials. Flux never deletes a product's namespace: dropping a spec removes its
 policies only.
 
+Only that workflow may write `mesh-policies`: it pushes with a deploy key no one else holds (secret
+`MESH_DEPLOY_KEY`), and the branch's ruleset refuses every other update, deletion and force push,
+with deploy keys as its only bypass. So what Flux applies to production always came through main.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
