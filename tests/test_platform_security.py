@@ -115,6 +115,10 @@ def test_the_mesh_denies_by_default_and_allows_declared_calls(s: dict) -> None:
     assert call["spec"]["selector"]["matchLabels"] == {"app.kubernetes.io/name": "example-service"}
     assert call["spec"]["rules"][0]["from"][0]["source"]["principals"] == ["cluster.local/ns/example/sa/example-bff"]
     assert call["spec"]["rules"][0]["to"][0]["operation"]["ports"] == ["8080"]
+    monitoring = next(d for d in docs if d["metadata"]["name"] == "monitoring-to-management")
+    assert monitoring["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["observability"]
+    assert monitoring["spec"]["rules"][0]["to"][0]["operation"]["ports"] == ["8081"]
+    assert not any(d["metadata"]["name"].startswith("monitoring-to-example") for d in docs)  # 8081 only
     ingress = next(d for d in docs if d["metadata"]["name"] == "ingress-to-example-bff")
     assert ingress["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["openchoreo-data-plane"]
     assert yaml.safe_load_all(mesh.dump(docs))
