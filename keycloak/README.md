@@ -3,12 +3,12 @@
 1. Install the operator (version matching `keycloak.yaml`'s image) into namespace `keycloak`.
 2. Create the database secret (`keycloak-db`) and TLS secret (`keycloak-tls`), then apply
    `keycloak.yaml`.
-3. For each product, generate its realm and apply it with
+3. For each product, generate its realm from its security repo's spec and apply it with
    [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli), which keeps the realm in
    line with the file on every run (the operator's `KeycloakRealmImport` only creates a realm once):
 
    ```bash
-   python -m platform_security realm products/emr.yaml -o build/emr-realm.json
+   python -m platform_security realm security.yaml -o build/emr-realm.json   # in emr-security
    # in CI/CD, with the clients' public certificates as environment variables:
    #   EMR_INTAKE_AGENT_CERTIFICATE=...  (one per client that exchanges tokens)
    keycloak-config-cli --import.files.locations=build/emr-realm.json \

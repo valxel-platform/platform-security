@@ -5,12 +5,11 @@ import json
 from pathlib import Path
 
 import pytest
-import yaml
 
 from platform_security import __main__ as cli
-from platform_security import mesh, realm, spec
+from platform_security import realm, spec
 
-EXAMPLE = Path(__file__).resolve().parents[1] / "products" / "example.yaml"
+EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "security.yaml"
 
 
 @pytest.fixture
@@ -103,27 +102,6 @@ def test_mobile_apps_are_public_clients_with_pkce(s: dict) -> None:
     assert any("offline_sessions" in p for p in spec.check(s2))
 
 
-def test_the_mesh_denies_by_default_and_allows_declared_calls(s: dict) -> None:
-    docs = mesh.render(s)
-    kinds = {(d["kind"], d["metadata"]["name"]) for d in docs}
-    assert ("PeerAuthentication", "strict-mtls") in kinds
-    nothing = next(d for d in docs if d["metadata"]["name"] == "allow-nothing")
-    assert nothing["spec"] == {}
-    ns = next(d for d in docs if d["kind"] == "Namespace")
-    assert ns["metadata"]["labels"]["istio.io/dataplane-mode"] == "ambient"
-    call = next(d for d in docs if d["metadata"]["name"] == "example-bff-to-example-service")
-    assert call["spec"]["selector"]["matchLabels"] == {"app.kubernetes.io/name": "example-service"}
-    assert call["spec"]["rules"][0]["from"][0]["source"]["principals"] == ["cluster.local/ns/example/sa/example-bff"]
-    assert call["spec"]["rules"][0]["to"][0]["operation"]["ports"] == ["8080"]
-    monitoring = next(d for d in docs if d["metadata"]["name"] == "monitoring-to-management")
-    assert monitoring["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["observability"]
-    assert monitoring["spec"]["rules"][0]["to"][0]["operation"]["ports"] == ["8081"]
-    assert not any(d["metadata"]["name"].startswith("monitoring-to-example") for d in docs)  # 8081 only
-    ingress = next(d for d in docs if d["metadata"]["name"] == "ingress-to-example-bff")
-    assert ingress["spec"]["rules"][0]["from"][0]["source"]["namespaces"] == ["openchoreo-data-plane"]
-    assert yaml.safe_load_all(mesh.dump(docs))
-
-
 def test_specs_are_checked(s: dict) -> None:
     assert spec.check(s) == []
     bad = {
@@ -147,49 +125,26 @@ def test_specs_are_checked(s: dict) -> None:
     assert "domain is required" in spec.check({})
 
 
-def test_the_cli_renders_both(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_the_cli_checks_and_renders_the_realm(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out = tmp_path / "realm.json"
     assert cli.main(["realm", str(EXAMPLE), "-o", str(out)]) == 0
     assert json.loads(out.read_text())["realm"] == "example"
-    assert cli.main(["mesh", str(EXAMPLE)]) == 0
-    assert "AuthorizationPolicy" in capsys.readouterr().out
     assert cli.main(["check", str(EXAMPLE)]) == 0
     bad = tmp_path / "bad.yaml"
     bad.write_text("product: x\n")
     assert cli.main(["check", str(bad)]) == 1
 
 
-def test_bundle_holds_every_product_but_the_example(tmp_path):
-    from platform_security import bundle
+def test_calls_name_real_ports_and_never_the_management_port(s: dict) -> None:
+    def problems(*calls: dict) -> list[str]:
+        return spec.check({**s, "calls": list(calls)})
 
-    products = tmp_path / "products"
-    products.mkdir()
-    example = yaml.safe_load(EXAMPLE.read_text())
-    (products / "example.yaml").write_text(yaml.safe_dump(example))
-    for name in ("zeta", "alpha"):
-        (products / f"{name}.yaml").write_text(yaml.safe_dump({**example, "product": name, "namespace": name}))
-    out = tmp_path / "out"
-    assert bundle.build(products, out) == ["alpha", "zeta"]
-    k = yaml.safe_load((out / "kustomization.yaml").read_text())
-    assert k["resources"] == ["alpha.yaml", "zeta.yaml"]
-    assert not (out / "example.yaml").exists()
-    # Flux never deletes a product's namespace (and its workloads) when a spec goes away.
-    assert k["patches"][0]["target"] == {"kind": "Namespace"}
-    assert yaml.safe_load(k["patches"][0]["patch"])[0]["value"] == {"kustomize.toolkit.fluxcd.io/prune": "disabled"}
-    docs = list(yaml.safe_load_all((out / "alpha.yaml").read_text()))
-    assert {d["metadata"].get("namespace", d["metadata"]["name"]) for d in docs} == {"alpha"}
+    assert problems({"from": "a", "to": "b", "port": 8080}) == []
+    assert "management port" in problems({"from": "a", "to": "b", "port": 8081})[0]
+    assert "not a port number" in problems({"from": "a", "to": "b", "port": "8080"})[0]
+    assert "not a port number" in problems({"from": "a", "to": "b", "port": 70000})[0]
+    assert "call itself" in problems({"from": "a", "to": "a", "port": 8080})[0]
 
 
-def test_bundle_stops_at_an_invalid_spec(tmp_path, capsys):
-    products = tmp_path / "products"
-    products.mkdir()
-    (products / "broken.yaml").write_text(yaml.safe_dump({"product": "broken"}))
-    assert cli.main(["bundle", str(products), "-o", str(tmp_path / "out")]) == 1
-    assert "domain is required" in capsys.readouterr().err
-    assert cli.main(["bundle", str(products)]) == 2
-
-
-def test_bundle_from_the_command_line(tmp_path, capsys):
-    assert cli.main(["bundle", str(EXAMPLE.parent), "-o", str(tmp_path / "out")]) == 0
-    assert "0 product(s)" in capsys.readouterr().out  # only the example so far
-    assert yaml.safe_load((tmp_path / "out/kustomization.yaml").read_text())["resources"] == []
+def test_the_namespace_is_openchoreos_not_the_specs(s: dict) -> None:
+    assert "namespace" not in s and spec.check(s) == []  # one per environment, made by OpenChoreo

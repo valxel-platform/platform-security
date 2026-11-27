@@ -1,0 +1,44 @@
+# Called by every product's security repo (template-security): checks its security.yaml with a
+# pinned release of this package, so a product can't declare what the platform forbids.
+#
+#   jobs:
+#     check:
+#       uses: valxel-platform/platform-security/.github/workflows/check.yml@v0.2.0
+#       with: { version: v0.2.0 }
+name: check
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The platform-security release to check with (the same tag as in `uses`)
+        type: string
+        required: true
+      spec:
+        description: The product's spec
+        type: string
+        default: security.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: security spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - env:
+          VERSION: ${{ inputs.version }}
+        run: pip install "platform-security @ git+https://github.com/valxel-platform/platform-security@${VERSION}"
+      - env:
+          SPEC: ${{ inputs.spec }}
+        run: |
+          python -m platform_security check "$SPEC"
+          python -m platform_security realm "$SPEC" > /dev/null

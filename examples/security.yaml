@@ -1,8 +1,8 @@
-# One file per product: its Keycloak realm and its mesh rules are generated from it.
-# (`python -m platform_security realm products/example.yaml`, `... mesh products/example.yaml`)
+# A product's security spec: security.yaml in its own security repo (<prefix>security, made from
+# template-security), reviewed by its security owners and checked by this package's `check`.
+# Its Keycloak realm is generated from it, and its `calls` become the mesh's allowed callers.
 product: example
 domain: example.valxel.com              # the web app's origin: https://<domain>
-namespace: example                      # the product's namespace in the data plane
 # The product's API audience: every service checks tokens carry it (APP_AUDIENCE).
 audience: example-api
 # Permissions the services declare (@PreAuthorize SCOPE_...), and who gets them by role.
@@ -29,8 +29,9 @@ agents:
       - { audience: example-care-mcp, scope: "tasks:read tasks:write" }
 mcp_servers:
   - name: example-care-mcp
-# Who may call whom inside the namespace (mirrors workload.yaml dependencies). Everything else is
-# denied by the mesh.
+# Who may call whom, by component name, in each environment's namespace (the Valxel SDLC proposes
+# these from an approved design's Endpoints at G4). Everything else is denied by the mesh. Port 8081
+# is the management port: only the platform's metrics collector reaches it.
 calls:
   - { from: example-bff, to: example-service, port: 8080 }
   - { from: example-bff, to: example-web, port: 8080 }
