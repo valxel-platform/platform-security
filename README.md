@@ -35,6 +35,13 @@ python -m platform_security mesh  products/<product>.yaml -o build/<product>-mes
 The Valxel SDLC adds clients and calls to a product's spec when a design (G4) adds a component or
 a dependency; this repo's pull requests are reviewed by the platform's security owners.
 
+**How the mesh policies reach the clusters.** After every merge to main, the `mesh` workflow
+renders every product's policies (`python -m platform_security bundle products -o DIR`; the
+example is left out) and publishes them, alone, to the `mesh-policies` branch. Flux in each data
+plane applies that branch (platform-foundation: `product-mesh`). Nobody runs `kubectl`, and GitHub
+holds no cluster credentials. Flux never deletes a product's namespace: dropping a spec removes its
+policies only.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
