@@ -35,3 +35,8 @@ calls:
   - { from: example-bff, to: example-service, port: 8080 }
   - { from: example-bff, to: example-web, port: 8080 }
   - { from: example-agent, to: example-care-mcp, port: 8080 }
+# Workloads whose metrics are on their API port (the Python templates' /metrics on 8080). The
+# data plane's metrics collector reaches 8081 (management) on every workload already.
+metrics:
+  - { workload: example-agent, port: 8080 }
+  - { workload: example-care-mcp, port: 8080 }

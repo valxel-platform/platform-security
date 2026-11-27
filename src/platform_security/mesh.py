@@ -18,7 +18,8 @@ def render(spec: dict[str, Any]) -> list[dict[str, Any]]:
     label = mesh.get("workload_label", "app.kubernetes.io/name")
     sa = mesh.get("service_account", "{name}")
     ingress_ns = mesh.get("ingress_namespace", "openchoreo-data-plane")
-    monitoring_ns = mesh.get("monitoring_namespace", "monitoring")
+    # The data plane's metrics collector (platform-foundation gitops/apps/product-telemetry).
+    monitoring_ns = mesh.get("monitoring_namespace", "observability")
     bff = spec["bff"]["client_id"]
 
     def principal(name: str) -> str:
@@ -60,6 +61,12 @@ def render(spec: dict[str, Any]) -> list[dict[str, Any]]:
             },
         },
     ]
+    # A workload whose metrics are on its API port (the Python templates serve /metrics on 8080) is
+    # declared under `metrics`; the collector then reaches that port on that workload only.
+    for m in spec.get("metrics") or []:
+        docs.append(
+            allow(ns, f"monitoring-to-{m['workload']}", label, m["workload"], [m["port"]], namespaces=[monitoring_ns])
+        )
     for c in spec.get("calls") or []:
         docs.append(
             allow(ns, f"{c['from']}-to-{c['to']}", label, c["to"], [c["port"]], principals=[principal(c["from"])])

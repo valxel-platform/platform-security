@@ -27,6 +27,7 @@ Rules for living with both:
 - **Cilium** keeps OpenChoreo's network policies (L3/L4 cell isolation, egress). Don't add Cilium
   L7 (HTTP) policies for ambient workloads: Cilium can't see inside the mesh's tunnel, and two L7
   engines disagree.
-- Prometheus and the platform's probes reach only port 8081 (management) of each workload.
+- The data plane's metrics collector (namespace `observability`) reaches port 8081 (management) of
+  each workload, and the API port only of the workloads a product lists under `metrics`.
 
 Check the versions against your OpenChoreo release before upgrading either.
