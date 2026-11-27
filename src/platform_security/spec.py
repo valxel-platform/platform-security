@@ -1,4 +1,5 @@
-"""A product's security spec (products/<product>.yaml), checked before anything is generated."""
+"""A product's security spec (security.yaml in the product's security repo), checked before anything
+is generated or applied."""
 
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ from typing import Any
 import yaml
 
 NAME = re.compile(r"^[a-z][a-z0-9-]{1,62}$")
+MANAGEMENT_PORT = 8081  # every template's metrics; the mesh lets only the collector reach it
 SCOPE = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
 
 
@@ -26,7 +28,7 @@ def load(path: str | Path) -> dict[str, Any]:
 
 def check(spec: dict[str, Any]) -> list[str]:
     out: list[str] = []
-    for key in ("product", "domain", "namespace", "audience"):
+    for key in ("product", "domain", "audience"):
         if not spec.get(key):
             out.append(f"{key} is required")
     for key in ("product", "namespace", "audience"):
@@ -71,4 +73,15 @@ def check(spec: dict[str, Any]) -> list[str]:
     for c in spec.get("calls") or []:
         if not (c.get("from") and c.get("to") and c.get("port")):
             out.append(f"call {c} needs from, to and port")
+            continue
+        port = c["port"]
+        if not isinstance(port, int) or not 1 <= port <= 65535:
+            out.append(f"call {c['from']} -> {c['to']}: port {port!r} is not a port number")
+        elif port == MANAGEMENT_PORT:
+            out.append(
+                f"call {c['from']} -> {c['to']}: {MANAGEMENT_PORT} is the management port, "
+                "which only the platform's metrics collector reaches"
+            )
+        if c["from"] == c["to"]:
+            out.append(f"call {c['from']} -> {c['to']}: a component doesn't need a rule to call itself")
     return out
