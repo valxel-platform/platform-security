@@ -1,0 +1,52 @@
+name: mesh
+# Publishes every product's mesh policies after a merge to main: `bundle` renders products/*.yaml
+# (not the example) and this job force-pushes the result, alone, to the `mesh-policies` branch.
+# Flux in each data plane applies that branch (platform-foundation: GitRepository and Kustomization
+# `product-mesh`), so a reviewed spec change reaches the clusters without anyone running kubectl,
+# and GitHub never holds cluster credentials. Nothing else writes to that branch; protect it with
+# a ruleset that only this workflow's token may push.
+
+on:
+  push:
+    branches: [main]
+    paths: ["products/**", "src/**", "pyproject.toml", ".github/workflows/mesh.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesh
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write      # push to mesh-policies
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -e .
+      - name: Render
+        run: python -m platform_security bundle products -o "$RUNNER_TEMP/mesh"
+      - name: Publish to mesh-policies
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE: ${{ github.sha }}
+        working-directory: ${{ runner.temp }}/mesh
+        run: |
+          git init -q -b mesh-policies
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Mesh policies from ${GITHUB_REPOSITORY}@${SOURCE}"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            push -f "https://github.com/${GITHUB_REPOSITORY}.git" HEAD:mesh-policies
+          echo "Published $(grep -c '\.yaml$' kustomization.yaml || true) product(s) from ${SOURCE}" >> "$GITHUB_STEP_SUMMARY"

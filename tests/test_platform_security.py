@@ -157,3 +157,39 @@ def test_the_cli_renders_both(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     bad = tmp_path / "bad.yaml"
     bad.write_text("product: x\n")
     assert cli.main(["check", str(bad)]) == 1
+
+
+def test_bundle_holds_every_product_but_the_example(tmp_path):
+    from platform_security import bundle
+
+    products = tmp_path / "products"
+    products.mkdir()
+    example = yaml.safe_load(EXAMPLE.read_text())
+    (products / "example.yaml").write_text(yaml.safe_dump(example))
+    for name in ("zeta", "alpha"):
+        (products / f"{name}.yaml").write_text(yaml.safe_dump({**example, "product": name, "namespace": name}))
+    out = tmp_path / "out"
+    assert bundle.build(products, out) == ["alpha", "zeta"]
+    k = yaml.safe_load((out / "kustomization.yaml").read_text())
+    assert k["resources"] == ["alpha.yaml", "zeta.yaml"]
+    assert not (out / "example.yaml").exists()
+    # Flux never deletes a product's namespace (and its workloads) when a spec goes away.
+    assert k["patches"][0]["target"] == {"kind": "Namespace"}
+    assert yaml.safe_load(k["patches"][0]["patch"])[0]["value"] == {"kustomize.toolkit.fluxcd.io/prune": "disabled"}
+    docs = list(yaml.safe_load_all((out / "alpha.yaml").read_text()))
+    assert {d["metadata"].get("namespace", d["metadata"]["name"]) for d in docs} == {"alpha"}
+
+
+def test_bundle_stops_at_an_invalid_spec(tmp_path, capsys):
+    products = tmp_path / "products"
+    products.mkdir()
+    (products / "broken.yaml").write_text(yaml.safe_dump({"product": "broken"}))
+    assert cli.main(["bundle", str(products), "-o", str(tmp_path / "out")]) == 1
+    assert "domain is required" in capsys.readouterr().err
+    assert cli.main(["bundle", str(products)]) == 2
+
+
+def test_bundle_from_the_command_line(tmp_path, capsys):
+    assert cli.main(["bundle", str(EXAMPLE.parent), "-o", str(tmp_path / "out")]) == 0
+    assert "0 product(s)" in capsys.readouterr().out  # only the example so far
+    assert yaml.safe_load((tmp_path / "out/kustomization.yaml").read_text())["resources"] == []
